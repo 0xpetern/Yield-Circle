@@ -74,25 +74,67 @@ export default function Home() {
       }
 
       // Call World ID via MiniKit (using async version to get result)
+      console.log("Starting verification with action: yield-circle-join");
       const result = await MiniKit.commandsAsync.verify({
         action: "yield-circle-join", // must match your action ID in the portal
         signal: target.name, // any string to bind the proof to
       });
 
       // Log the full result for debugging
-      console.log("Verify result:", result.finalPayload);
+      console.log("Verify result:", JSON.stringify(result.finalPayload, null, 2));
 
       // Check if verification was actually successful
       if (result.finalPayload.status === "success") {
-        setVerifyStatus(
-          `✅ Verified with World ID! You can now join the circle "${target.name}".`
-        );
+        // Verify the proof on the server side (important for security)
+        console.log("MiniKit verification succeeded, verifying proof on server...");
+        try {
+          const response = await fetch("/api/verify-proof", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              payload: result.finalPayload,
+              action: "yield-circle-join",
+              signal: target.name,
+            }),
+          });
 
-        setCircles((prev) =>
-          prev.map((c) =>
-            c.id === target.id ? { ...c, verified: true } : c
-          )
-        );
+          const data = await response.json();
+          console.log("Server verification result:", data);
+
+          if (data.verifyRes?.success) {
+            setVerifyStatus(
+              `✅ Verified with World ID! You can now join the circle "${target.name}".`
+            );
+
+            setCircles((prev) =>
+              prev.map((c) =>
+                c.id === target.id ? { ...c, verified: true } : c
+              )
+            );
+          } else {
+            setCircles((prev) =>
+              prev.map((c) =>
+                c.id === target.id ? { ...c, verified: false } : c
+              )
+            );
+            setVerifyStatus(
+              `Server verification failed: ${data.verifyRes?.detail || "Unknown error"}`
+            );
+          }
+        } catch (serverError) {
+          console.error("Server verification error:", serverError);
+          // For hackathon, still mark as verified if MiniKit succeeded
+          setVerifyStatus(
+            `✅ Verified with World ID! (Server verification skipped for demo)`
+          );
+          setCircles((prev) =>
+            prev.map((c) =>
+              c.id === target.id ? { ...c, verified: true } : c
+            )
+          );
+        }
       } else {
         // Verification failed - show error from MiniKit
         // Explicitly ensure circle is NOT marked as verified
@@ -103,9 +145,12 @@ export default function Home() {
         );
         
         const errorCode = result.finalPayload.error_code;
+        const fullError = JSON.stringify(result.finalPayload, null, 2);
+        console.error("Verification failed:", fullError);
+        
         const errorMessage = errorCode
-          ? `Error code: ${errorCode}. Make sure the action "yield-circle-join" exists in your World ID developer portal.`
-          : "Verification failed. Please check that the action 'yield-circle-join' is configured in your World ID developer portal.";
+          ? `Error code: ${errorCode}. Make sure the action "yield-circle-join" exists in your World ID developer portal. Check console for details.`
+          : "Verification failed. Please check that the action 'yield-circle-join' is configured in your World ID developer portal. Check console for details.";
         setVerifyStatus(`Verification error: ${errorMessage}`);
       }
     } catch (error) {
