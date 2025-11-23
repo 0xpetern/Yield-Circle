@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MiniKit } from "@worldcoin/minikit-js";
+import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
 import { depositToCircleOnWorldChain } from "../lib/worldPayment";
 
 type Circle = {
@@ -74,10 +74,12 @@ export default function Home() {
       }
 
       // Call World ID via MiniKit (using async version to get result)
+      // Use Device verification level (easier for hackathon - no Orb needed)
       console.log("Starting verification with action: yield-circle-join");
       const result = await MiniKit.commandsAsync.verify({
         action: "yield-circle-join", // must match your action ID in the portal
         signal: target.name, // any string to bind the proof to
+        verification_level: VerificationLevel.Device, // Use Device instead of Orb
       });
 
       // Log the full result for debugging
