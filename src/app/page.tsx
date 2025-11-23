@@ -634,7 +634,7 @@ export default function Home() {
               Verify & Join Circle
             </h2>
             <p style={{ fontSize: "14px", color: "#718096", marginBottom: "16px" }}>
-              Verify your identity with World ID to join "{firstCircle.name}".
+              Verify your identity with World ID to join {firstCircle.name}.
             </p>
             <button
               onClick={handleVerifyForFirstCircle}
