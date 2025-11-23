@@ -24,7 +24,7 @@ module.exports = {
     },
     world: {
       url: process.env.WORLD_RPC_URL || "https://worldchain-sepolia.g.alchemy.com/public",
-      chainId: Number(process.env.WORLD_CHAIN_ID) || 4801, // World Chain Sepolia Testnet
+      chainId: Number(process.env.WORLD_CHAIN_ID) || 4801, // World Chain (480 = mainnet, 4801 = Sepolia testnet)
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
