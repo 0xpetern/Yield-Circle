@@ -267,8 +267,8 @@ export default function Home() {
 
   async function handleWithdraw() {
     const target = circles[0];
-    if (!target || target.circleId === 0) {
-      setWithdrawStatus("Circle not created on-chain yet. Deposit first.");
+    if (!target) {
+      setWithdrawStatus("No circle found.");
       return;
     }
 
@@ -284,16 +284,10 @@ export default function Home() {
     }
 
     setIsWithdrawing(true);
-    setWithdrawStatus(null);
+    setWithdrawStatus("Processing withdraw...");
 
-    try {
-      if (!MiniKit.isInstalled()) {
-        setWithdrawStatus("Please open this mini app inside World App to withdraw.");
-        return;
-      }
-
-      await withdrawFromCircle(target.circleId, amount);
-
+    // HACKATHON DEMO MODE: Simulate withdraw
+    setTimeout(() => {
       setCircles((prev) =>
         prev.map((c) =>
           c.id === target.id
@@ -306,23 +300,16 @@ export default function Home() {
         )
       );
 
-      setWithdrawStatus(`✅ Withdrew ${amount} ETH from circle "${target.name}".`);
+      setWithdrawStatus(`✅ Withdrew ${amount} ETH from circle "${target.name}" (Demo Mode).`);
       setWithdrawAmount("");
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Unknown error";
-      setWithdrawStatus(`Withdraw failed: ${errorMessage}`);
-    } finally {
       setIsWithdrawing(false);
-    }
+    }, 1000);
   }
 
   async function handleClaimPot() {
     const target = circles[0];
-    if (!target || target.circleId === 0) {
-      setClaimStatus("Circle not created on-chain yet. Deposit first.");
+    if (!target) {
+      setClaimStatus("No circle found.");
       return;
     }
 
@@ -332,16 +319,10 @@ export default function Home() {
     }
 
     setIsClaiming(true);
-    setClaimStatus(null);
+    setClaimStatus("Processing claim...");
 
-    try {
-      if (!MiniKit.isInstalled()) {
-        setClaimStatus("Please open this mini app inside World App to claim.");
-        return;
-      }
-
-      await claimPot(target.circleId);
-
+    // HACKATHON DEMO MODE: Simulate claim
+    setTimeout(() => {
       // Calculate: recipient gets (pot - their deposit), their deposit stays
       const claimAmount = target.pot - target.myContribution;
       const redepositedAmount = target.myContribution;
@@ -361,17 +342,10 @@ export default function Home() {
       );
 
       setClaimStatus(
-        `✅ Claimed ${claimAmount} ETH! Your deposit of ${redepositedAmount} ETH stays in the circle.`
+        `✅ Claimed ${claimAmount} ETH! Your deposit of ${redepositedAmount} ETH stays in the circle (Demo Mode).`
       );
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Unknown error";
-      setClaimStatus(`Claim failed: ${errorMessage}`);
-    } finally {
       setIsClaiming(false);
-    }
+    }, 1000);
   }
 
   const firstCircle = circles[0] ?? null;
@@ -397,6 +371,20 @@ export default function Home() {
         Save together with trusted people. Take turns getting a big payout, and
         earn extra yield if you stay for the whole circle.
       </p>
+
+      {/* Demo Mode Notice */}
+      <div style={{ 
+        padding: "12px", 
+        margin: "10px", 
+        backgroundColor: "#fff3cd", 
+        border: "1px solid #ffc107", 
+        borderRadius: "8px",
+        fontSize: "14px",
+        maxWidth: "360px",
+        textAlign: "center"
+      }}>
+        🎭 <strong>Demo Mode:</strong> Transactions are simulated for hackathon demo
+      </div>
 
       {/* Wallet Switcher for Demo */}
       <WalletSwitcher />
