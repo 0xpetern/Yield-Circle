@@ -65,64 +65,45 @@ export default function Home() {
     setVerifyStatus(null);
 
     try {
-      if (!MiniKit.isInstalled()) {
-        setVerifyStatus(
-          "Open this app inside World App to verify with World ID."
-        );
-        return;
-      }
-
-      // Call World ID via MiniKit (using async version to get result)
-      const result = await MiniKit.commandsAsync.verify({
-        action: "yield-circle-join", // must match your action ID in the portal
-        signal: target.name, // any string to bind the proof to
-      });
-
-      // Log the full result for debugging
-      console.log("Verify result:", result.finalPayload);
-
-      // Check if verification was actually successful
-      if (result.finalPayload.status === "success") {
-        setVerifyStatus(
-          `✅ Verified with World ID! You can now join the circle "${target.name}".`
-        );
-
-        setCircles((prev) =>
-          prev.map((c) =>
-            c.id === target.id ? { ...c, verified: true } : c
-          )
-        );
-      } else {
-        // Verification failed - show error from MiniKit
-        // Explicitly ensure circle is NOT marked as verified
-        setCircles((prev) =>
-          prev.map((c) =>
-            c.id === target.id ? { ...c, verified: false } : c
-          )
-        );
-        
-        const errorCode = result.finalPayload.error_code;
-        const errorMessage = errorCode
-          ? `Error code: ${errorCode}. Make sure the action "yield-circle-join" exists in your World ID developer portal.`
-          : "Verification failed. Please check that the action 'yield-circle-join' is configured in your World ID developer portal.";
-        setVerifyStatus(`Verification error: ${errorMessage}`);
-      }
-    } catch (error) {
-      // Handle unexpected errors - ensure circle is NOT marked as verified
-      setCircles((prev) =>
-        prev.map((c) =>
-          c.id === target.id ? { ...c, verified: false } : c
-        )
-      );
+      // HACKATHON WORKAROUND: Use the test verification link from World ID portal
+      const verificationLink = "https://worldcoin.org/verify?t=wld&i=8b1aac16-3f48-454f-a757-7bde28c2176d&k=dtrVN0X1nBEQKSUJLKOmrwGwhL%2F65fOovSqriVMLoD0%3D";
       
+      // Try to open in new window/tab
+      const verifyWindow = window.open(verificationLink, "_blank");
+      
+      if (verifyWindow) {
+        setVerifyStatus("Verification page opened. Complete verification, then click 'I completed verification' below.");
+      } else {
+        // Popup blocked, redirect in same window
+        setVerifyStatus("Opening verification... Complete it and return to mark as verified.");
+        window.location.href = verificationLink;
+      }
+      
+      setIsVerifying(false); // Allow manual verify button to work
+      
+    } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
-          : "Verification error. Please try again in World App.";
+          : "Verification error. Please try again.";
       setVerifyStatus(errorMessage);
-    } finally {
       setIsVerifying(false);
     }
+  }
+
+  // Helper function to manually mark as verified (for hackathon demo)
+  function handleManualVerify() {
+    if (circles.length === 0) return;
+    const target = circles[0];
+    setCircles((prev) =>
+      prev.map((c) =>
+        c.id === target.id ? { ...c, verified: true } : c
+      )
+    );
+    setVerifyStatus(
+      `✅ Verified! You can now join the circle "${target.name}".`
+    );
+    setIsVerifying(false);
   }
 
   async function handleDepositForFirstCircle() {
@@ -308,6 +289,26 @@ export default function Home() {
           >
             {verifyStatus}
           </p>
+        )}
+
+        {/* Hackathon workaround: Manual verify button */}
+        {!firstCircle?.verified && (
+          <button
+            onClick={handleManualVerify}
+            style={{
+              marginTop: "8px",
+              padding: "8px 12px",
+              borderRadius: "8px",
+              border: "1px solid #ccc",
+              fontSize: "14px",
+              fontWeight: 500,
+              cursor: "pointer",
+              backgroundColor: "#f9fafb",
+              color: "#374151",
+            }}
+          >
+            I completed verification (Demo)
+          </button>
         )}
       </div>
 
