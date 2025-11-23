@@ -87,7 +87,7 @@ export default function Home() {
           c.id === target.id ? { ...c, verified: true } : c
         )
       );
-    } catch (err: any) {
+    } catch {
       setVerifyStatus(
         "Verification error. Please try again in World App."
       );
