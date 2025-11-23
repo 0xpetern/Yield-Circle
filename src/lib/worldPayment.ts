@@ -1,5 +1,8 @@
 import { MiniKit } from "@worldcoin/minikit-js";
-import YieldCircleVaultABI from "../abi/YieldCircleVault.json";
+import YieldCircleVaultArtifact from "../abi/YieldCircleVault.json";
+
+// Extract just the ABI array from the Hardhat artifact
+const YieldCircleVaultABI = YieldCircleVaultArtifact.abi;
 
 // Deployed YieldCircleVault contract address on World Chain Mainnet
 // Deployed at: 0x740C84837c3D6463f294e6673336282CD0D7E139
