@@ -2,8 +2,8 @@ import { MiniKit } from "@worldcoin/minikit-js";
 import YieldCircleVaultABI from "../abi/YieldCircleVault.json";
 
 // Deployed YieldCircleVault contract address on World Chain Sepolia Testnet
-// Deployed at: 0x6b441ca9921F9046Dd760a06B3A06601B0e63680
-const YIELD_CIRCLE_VAULT_ADDRESS = "0x6b441ca9921F9046Dd760a06B3A06601B0e63680";
+// Deployed at: 0x740C84837c3D6463f294e6673336282CD0D7E139
+const YIELD_CIRCLE_VAULT_ADDRESS = "0x740C84837c3D6463f294e6673336282CD0D7E139";
 
 /**
  * Converts ETH amount to wei (BigInt)
