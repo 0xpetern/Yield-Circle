@@ -214,23 +214,12 @@ export default function Home() {
     }
 
     setIsDepositing(true);
+    setDepositStatus("Processing deposit...");
 
-    try {
-      // Check if MiniKit is installed before attempting payment
-      if (!MiniKit.isInstalled()) {
-        setDepositStatus(
-          "Please open this mini app inside World App to deposit."
-        );
-        return;
-      }
-
-      // Call the World Chain payment helper
-      // If circleId is 0, it will create a new circle on-chain
-      // targetAmountPerPerson is the target deposit per person (use the amount for simplicity)
-      await depositToCircleOnWorldChain(amount, target.circleId, amount);
-
-      // If payment succeeds, update local state
-      // Note: In a real app, you'd fetch the actual circle state from the contract
+    // HACKATHON DEMO MODE: Simulate deposit without blockchain transaction
+    // This allows the demo to work without contract deployment issues
+    setTimeout(() => {
+      // Simulate successful deposit
       setCircles((prev) =>
         prev.map((c) =>
           c.id === target.id
@@ -238,10 +227,8 @@ export default function Home() {
                 ...c,
                 pot: c.pot + amount,
                 myContribution: c.myContribution + amount,
-                // If this was the first deposit (circleId = 0), the contract returns the new circleId
-                // For now, we'll use a simple increment (in production, parse from transaction)
-                circleId: c.circleId === 0 ? 1 : c.circleId,
                 // First depositor becomes recipient
+                circleId: c.circleId === 0 ? 1 : c.circleId,
                 currentRecipient: c.currentRecipient || "You (first depositor)",
                 isRecipient: c.circleId === 0 || c.isRecipient,
               }
@@ -250,19 +237,46 @@ export default function Home() {
       );
 
       setDepositStatus(
-        `✅ On-chain deposit successful. Deposited ${amount} into circle "${target.name}".`
+        `✅ Deposit successful (Demo Mode). Deposited ${amount} ETH into circle "${target.name}".`
       );
       setDepositAmount("");
+      setIsDepositing(false);
+    }, 1000); // Simulate 1 second processing time
+
+    /* 
+    // REAL BLOCKCHAIN VERSION (commented out for hackathon demo)
+    try {
+      if (!MiniKit.isInstalled()) {
+        setDepositStatus("Please open this mini app inside World App to deposit.");
+        return;
+      }
+
+      await depositToCircleOnWorldChain(amount, target.circleId, amount);
+
+      setCircles((prev) =>
+        prev.map((c) =>
+          c.id === target.id
+            ? {
+                ...c,
+                pot: c.pot + amount,
+                myContribution: c.myContribution + amount,
+                circleId: c.circleId === 0 ? 1 : c.circleId,
+                currentRecipient: c.currentRecipient || "You (first depositor)",
+                isRecipient: c.circleId === 0 || c.isRecipient,
+              }
+            : c
+        )
+      );
+
+      setDepositStatus(`✅ On-chain deposit successful. Deposited ${amount} into circle "${target.name}".`);
+      setDepositAmount("");
     } catch (error) {
-      // Handle errors from the deposit helper
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Unknown World Chain error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown World Chain error";
       setDepositStatus(`Deposit failed: ${errorMessage}`);
     } finally {
       setIsDepositing(false);
     }
+    */
   }
 
   async function handleWithdraw() {
