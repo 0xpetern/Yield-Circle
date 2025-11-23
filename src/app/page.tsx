@@ -164,7 +164,7 @@ export default function Home() {
         );
         
         const errorCode = result.finalPayload.error_code;
-        const errorDetail = (result.finalPayload as any).description || errorCode || "";
+        const errorDetail = errorCode || "";
         
         setVerifyStatus(
           `Verification failed: ${errorDetail || "Unknown error"}`
