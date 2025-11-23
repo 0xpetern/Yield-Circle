@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
-import { depositToCircleOnWorldChain } from "../lib/worldPayment";
+import { depositToCircleOnWorldChain, withdrawFromCircle, claimPot } from "../lib/worldPayment";
+import { WalletSwitcher } from "../components/WalletSwitcher";
 
 type Circle = {
   id: number;
@@ -11,6 +12,10 @@ type Circle = {
   verified: boolean;
   pot: number; // total balance in this circle (local tracking)
   myContribution: number; // how much this user/device has deposited (local tracking)
+  circleId: number; // contract circle ID (0 = not created on-chain yet)
+  currentRecipient: string | null; // address of current recipient
+  roundNumber: number; // current round number
+  isRecipient: boolean; // is current user the recipient?
 };
 
 export default function Home() {
@@ -24,6 +29,13 @@ export default function Home() {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositStatus, setDepositStatus] = useState<string | null>(null);
   const [isDepositing, setIsDepositing] = useState(false);
+  
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawStatus, setWithdrawStatus] = useState<string | null>(null);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  
+  const [claimStatus, setClaimStatus] = useState<string | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
 
   function handleCreateCircle() {
     if (!circleName.trim() || !numPeople.trim()) {
@@ -44,6 +56,10 @@ export default function Home() {
       verified: false,
       pot: 0,
       myContribution: 0,
+      circleId: 0, // Will be set when first deposit creates the circle on-chain
+      currentRecipient: null,
+      roundNumber: 1,
+      isRecipient: false,
     };
 
     setCircles((prev) => [...prev, newCircle]);
@@ -209,9 +225,12 @@ export default function Home() {
       }
 
       // Call the World Chain payment helper
-      await depositToCircleOnWorldChain(amount, target.name);
+      // If circleId is 0, it will create a new circle on-chain
+      // targetAmountPerPerson is the target deposit per person (use the amount for simplicity)
+      await depositToCircleOnWorldChain(amount, target.circleId, amount);
 
       // If payment succeeds, update local state
+      // Note: In a real app, you'd fetch the actual circle state from the contract
       setCircles((prev) =>
         prev.map((c) =>
           c.id === target.id
@@ -219,6 +238,12 @@ export default function Home() {
                 ...c,
                 pot: c.pot + amount,
                 myContribution: c.myContribution + amount,
+                // If this was the first deposit (circleId = 0), the contract returns the new circleId
+                // For now, we'll use a simple increment (in production, parse from transaction)
+                circleId: c.circleId === 0 ? 1 : c.circleId,
+                // First depositor becomes recipient
+                currentRecipient: c.currentRecipient || "You (first depositor)",
+                isRecipient: c.circleId === 0 || c.isRecipient,
               }
             : c
         )
@@ -237,6 +262,115 @@ export default function Home() {
       setDepositStatus(`Deposit failed: ${errorMessage}`);
     } finally {
       setIsDepositing(false);
+    }
+  }
+
+  async function handleWithdraw() {
+    const target = circles[0];
+    if (!target || target.circleId === 0) {
+      setWithdrawStatus("Circle not created on-chain yet. Deposit first.");
+      return;
+    }
+
+    const amount = Number(withdrawAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setWithdrawStatus("Withdraw amount must be a positive number.");
+      return;
+    }
+
+    if (amount > target.myContribution) {
+      setWithdrawStatus("Cannot withdraw more than your contribution.");
+      return;
+    }
+
+    setIsWithdrawing(true);
+    setWithdrawStatus(null);
+
+    try {
+      if (!MiniKit.isInstalled()) {
+        setWithdrawStatus("Please open this mini app inside World App to withdraw.");
+        return;
+      }
+
+      await withdrawFromCircle(target.circleId, amount);
+
+      setCircles((prev) =>
+        prev.map((c) =>
+          c.id === target.id
+            ? {
+                ...c,
+                pot: c.pot - amount,
+                myContribution: c.myContribution - amount,
+              }
+            : c
+        )
+      );
+
+      setWithdrawStatus(`✅ Withdrew ${amount} ETH from circle "${target.name}".`);
+      setWithdrawAmount("");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Unknown error";
+      setWithdrawStatus(`Withdraw failed: ${errorMessage}`);
+    } finally {
+      setIsWithdrawing(false);
+    }
+  }
+
+  async function handleClaimPot() {
+    const target = circles[0];
+    if (!target || target.circleId === 0) {
+      setClaimStatus("Circle not created on-chain yet. Deposit first.");
+      return;
+    }
+
+    if (!target.isRecipient) {
+      setClaimStatus("Only the current recipient can claim the pot.");
+      return;
+    }
+
+    setIsClaiming(true);
+    setClaimStatus(null);
+
+    try {
+      if (!MiniKit.isInstalled()) {
+        setClaimStatus("Please open this mini app inside World App to claim.");
+        return;
+      }
+
+      await claimPot(target.circleId);
+
+      // Calculate: recipient gets (pot - their deposit), their deposit stays
+      const claimAmount = target.pot - target.myContribution;
+      const redepositedAmount = target.myContribution;
+
+      setCircles((prev) =>
+        prev.map((c) =>
+          c.id === target.id
+            ? {
+                ...c,
+                pot: redepositedAmount, // Pot resets to recipient's deposit
+                myContribution: redepositedAmount, // Their deposit stays
+                roundNumber: c.roundNumber + 1,
+                isRecipient: false, // Next person becomes recipient
+              }
+            : c
+        )
+      );
+
+      setClaimStatus(
+        `✅ Claimed ${claimAmount} ETH! Your deposit of ${redepositedAmount} ETH stays in the circle.`
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Unknown error";
+      setClaimStatus(`Claim failed: ${errorMessage}`);
+    } finally {
+      setIsClaiming(false);
     }
   }
 
@@ -263,6 +397,9 @@ export default function Home() {
         Save together with trusted people. Take turns getting a big payout, and
         earn extra yield if you stay for the whole circle.
       </p>
+
+      {/* Wallet Switcher for Demo */}
+      <WalletSwitcher />
 
       {/* Create circle form */}
       <div
@@ -383,7 +520,7 @@ export default function Home() {
             Deposit into: {firstCircle.name}
           </h2>
 
-          <div style={{ fontSize: "14px" }}>
+          <div style={{ fontSize: "14px", display: "flex", flexDirection: "column", gap: "4px" }}>
             <div>Members (target): {firstCircle.numPeople}</div>
             <div>
               World ID status:{" "}
@@ -391,8 +528,20 @@ export default function Home() {
                 ? "✅ verified for this device"
                 : "Not verified yet"}
             </div>
-            <div>Total circle pot: {firstCircle.pot}</div>
-            <div>Your contribution: {firstCircle.myContribution}</div>
+            <div>Total circle pot: {firstCircle.pot} ETH</div>
+            <div>Your contribution: {firstCircle.myContribution} ETH</div>
+            {firstCircle.currentRecipient && (
+              <div style={{ 
+                padding: "8px", 
+                backgroundColor: firstCircle.isRecipient ? "#d4edda" : "#fff3cd",
+                borderRadius: "6px",
+                marginTop: "4px"
+              }}>
+                <strong>Current Recipient:</strong> {firstCircle.isRecipient ? "🎉 YOU!" : firstCircle.currentRecipient}
+                <br />
+                <strong>Round:</strong> {firstCircle.roundNumber}
+              </div>
+            )}
           </div>
 
           <label style={{ fontSize: "14px" }}>
@@ -440,6 +589,90 @@ export default function Home() {
             >
               {depositStatus}
             </p>
+          )}
+
+          {/* Withdraw section */}
+          {firstCircle.myContribution > 0 && !firstCircle.isRecipient && (
+            <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #ddd" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
+                Withdraw Your Contribution
+              </h3>
+              <label style={{ fontSize: "14px" }}>
+                Withdraw amount
+                <input
+                  type="number"
+                  placeholder={`Max: ${firstCircle.myContribution}`}
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    marginTop: "4px",
+                    borderRadius: "8px",
+                    border: "1px solid #ccc",
+                  }}
+                />
+              </label>
+              <button
+                onClick={handleWithdraw}
+                disabled={isWithdrawing}
+                style={{
+                  marginTop: "8px",
+                  padding: "10px 16px",
+                  borderRadius: "999px",
+                  border: "none",
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  cursor: isWithdrawing ? "wait" : "pointer",
+                  backgroundColor: "#dc2626",
+                  color: "white",
+                  width: "100%",
+                }}
+              >
+                {isWithdrawing ? "Processing..." : "Withdraw"}
+              </button>
+              {withdrawStatus && (
+                <p style={{ marginTop: "6px", fontSize: "14px", color: "#374151" }}>
+                  {withdrawStatus}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Claim pot section (only for recipient) */}
+          {firstCircle.isRecipient && firstCircle.pot > firstCircle.myContribution && (
+            <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #ddd" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
+                🎉 Claim the Pot!
+              </h3>
+              <div style={{ fontSize: "14px", marginBottom: "12px", padding: "8px", backgroundColor: "#d4edda", borderRadius: "6px" }}>
+                <div>Total Pot: {firstCircle.pot} ETH</div>
+                <div>Your Deposit: {firstCircle.myContribution} ETH (stays in)</div>
+                <div><strong>You'll receive: {firstCircle.pot - firstCircle.myContribution} ETH</strong></div>
+              </div>
+              <button
+                onClick={handleClaimPot}
+                disabled={isClaiming}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: "999px",
+                  border: "none",
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  cursor: isClaiming ? "wait" : "pointer",
+                  backgroundColor: "#047857",
+                  color: "white",
+                  width: "100%",
+                }}
+              >
+                {isClaiming ? "Processing claim..." : "Claim Pot"}
+              </button>
+              {claimStatus && (
+                <p style={{ marginTop: "6px", fontSize: "14px", color: "#374151" }}>
+                  {claimStatus}
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}
