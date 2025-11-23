@@ -16,6 +16,9 @@ type Circle = {
   currentRecipient: string | null; // address of current recipient
   roundNumber: number; // current round number
   isRecipient: boolean; // is current user the recipient?
+  yieldEarned: number; // yield earned by this user
+  totalYield: number; // total yield in the circle
+  emergencyApprovals: number; // number of approvals for emergency withdraw (for demo)
 };
 
 export default function Home() {
@@ -36,6 +39,13 @@ export default function Home() {
   
   const [claimStatus, setClaimStatus] = useState<string | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
+  
+  const [yieldStatus, setYieldStatus] = useState<string | null>(null);
+  const [isClaimingYield, setIsClaimingYield] = useState(false);
+  
+  const [emergencyStatus, setEmergencyStatus] = useState<string | null>(null);
+  const [isRequestingEmergency, setIsRequestingEmergency] = useState(false);
+  const [hasApprovedEmergency, setHasApprovedEmergency] = useState(false);
 
   function handleCreateCircle() {
     if (!circleName.trim() || !numPeople.trim()) {
@@ -60,6 +70,9 @@ export default function Home() {
       currentRecipient: null,
       roundNumber: 1,
       isRecipient: false,
+      yieldEarned: 0,
+      totalYield: 0,
+      emergencyApprovals: 0,
     };
 
     setCircles((prev) => [...prev, newCircle]);
@@ -219,25 +232,33 @@ export default function Home() {
     // HACKATHON DEMO MODE: Simulate deposit without blockchain transaction
     // This allows the demo to work without contract deployment issues
     setTimeout(() => {
+      // Calculate: 10% of deposit goes to yield strategy, 90% to pot
+      const YIELD_PERCENT = 10;
+      const yieldAmount = (amount * YIELD_PERCENT) / 100;
+      const potAmount = amount - yieldAmount;
+
       // Simulate successful deposit
       setCircles((prev) =>
         prev.map((c) =>
           c.id === target.id
             ? {
                 ...c,
-                pot: c.pot + amount,
+                pot: c.pot + potAmount,
                 myContribution: c.myContribution + amount,
                 // First depositor becomes recipient
                 circleId: c.circleId === 0 ? 1 : c.circleId,
                 currentRecipient: c.currentRecipient || "You (first depositor)",
                 isRecipient: c.circleId === 0 || c.isRecipient,
+                // Track yield (10% of each deposit goes to yield strategy)
+                yieldEarned: c.yieldEarned + yieldAmount,
+                totalYield: c.totalYield + yieldAmount,
               }
             : c
         )
       );
 
       setDepositStatus(
-        `✅ Deposit successful (Demo Mode). Deposited ${amount} ETH into circle "${target.name}".`
+        `✅ Deposit successful (Demo Mode). Deposited ${amount} ETH into circle "${target.name}". ${potAmount.toFixed(4)} ETH to pot, ${yieldAmount.toFixed(4)} ETH to yield strategy.`
       );
       setDepositAmount("");
       setIsDepositing(false);
@@ -297,10 +318,15 @@ export default function Home() {
       return;
     }
 
+    // Withdrawal fee: 5% to disincentivize leaving
+    const WITHDRAWAL_FEE_PERCENT = 5;
+    const withdrawalFee = (amount * WITHDRAWAL_FEE_PERCENT) / 100;
+    const amountAfterFee = amount - withdrawalFee;
+
     setIsWithdrawing(true);
     setWithdrawStatus("Processing withdraw...");
 
-    // HACKATHON DEMO MODE: Simulate withdraw
+    // HACKATHON DEMO MODE: Simulate withdraw with fee
     setTimeout(() => {
       setCircles((prev) =>
         prev.map((c) =>
@@ -314,7 +340,9 @@ export default function Home() {
         )
       );
 
-      setWithdrawStatus(`✅ Withdrew ${amount} ETH from circle "${target.name}" (Demo Mode).`);
+      setWithdrawStatus(
+        `✅ Withdrew ${amountAfterFee.toFixed(4)} ETH (${amount} ETH - ${withdrawalFee.toFixed(4)} ETH fee) from circle "${target.name}" (Demo Mode).`
+      );
       setWithdrawAmount("");
       setIsWithdrawing(false);
     }, 1000);
@@ -335,9 +363,9 @@ export default function Home() {
     setIsClaiming(true);
     setClaimStatus("Processing claim...");
 
-    // HACKATHON DEMO MODE: Simulate claim
+    // HACKATHON DEMO MODE: Simulate claim with redeposit
     setTimeout(() => {
-      // Calculate: recipient gets (pot - their deposit), their deposit stays
+      // Calculate: recipient gets (pot - their deposit), their deposit stays (redeposited)
       const claimAmount = target.pot - target.myContribution;
       const redepositedAmount = target.myContribution;
 
@@ -346,7 +374,7 @@ export default function Home() {
           c.id === target.id
             ? {
                 ...c,
-                pot: redepositedAmount, // Pot resets to recipient's deposit
+                pot: redepositedAmount, // Pot resets to recipient's deposit (redeposited)
                 myContribution: redepositedAmount, // Their deposit stays
                 roundNumber: c.roundNumber + 1,
                 isRecipient: false, // Next person becomes recipient
@@ -356,10 +384,144 @@ export default function Home() {
       );
 
       setClaimStatus(
-        `✅ Claimed ${claimAmount} ETH! Your deposit of ${redepositedAmount} ETH stays in the circle (Demo Mode).`
+        `✅ Claimed ${claimAmount.toFixed(4)} ETH! Your deposit of ${redepositedAmount.toFixed(4)} ETH has been REDEPOSITED into the circle to ensure you don't run away (Demo Mode).`
       );
       setIsClaiming(false);
     }, 1000);
+  }
+
+  async function handleClaimYield() {
+    const target = circles[0];
+    if (!target) {
+      setYieldStatus("No circle found.");
+      return;
+    }
+
+    if (target.yieldEarned <= 0) {
+      setYieldStatus("You have no yield to claim yet.");
+      return;
+    }
+
+    setIsClaimingYield(true);
+    setYieldStatus("Processing yield claim...");
+
+    // HACKATHON DEMO MODE: Simulate yield claim
+    setTimeout(() => {
+      const yieldAmount = target.yieldEarned;
+
+      setCircles((prev) =>
+        prev.map((c) =>
+          c.id === target.id
+            ? {
+                ...c,
+                yieldEarned: 0, // Reset yield after claiming
+                totalYield: c.totalYield - yieldAmount,
+              }
+            : c
+        )
+      );
+
+      setYieldStatus(
+        `✅ Claimed ${yieldAmount.toFixed(4)} ETH in yield! This is from the yield strategy portion of contributions (Demo Mode).`
+      );
+      setIsClaimingYield(false);
+    }, 1000);
+  }
+
+  async function handleEmergencyWithdraw() {
+    const target = circles[0];
+    if (!target) {
+      setEmergencyStatus("No circle found.");
+      return;
+    }
+
+    if (target.myContribution <= 0) {
+      setEmergencyStatus("You have no contribution to withdraw.");
+      return;
+    }
+
+    setIsRequestingEmergency(true);
+    setEmergencyStatus("Requesting emergency withdraw...");
+
+    // HACKATHON DEMO MODE: Simulate emergency withdraw request
+    setTimeout(() => {
+      // Calculate required approvals: 80% of participants
+      const requiredApprovals = Math.ceil(target.numPeople * 0.8);
+      const currentApprovals = target.emergencyApprovals + 1; // User approves their own request
+
+      if (currentApprovals >= requiredApprovals) {
+        // Emergency withdraw approved - user can withdraw
+        const withdrawAmount = target.myContribution;
+
+        setCircles((prev) =>
+          prev.map((c) =>
+            c.id === target.id
+              ? {
+                  ...c,
+                  pot: c.pot - withdrawAmount,
+                  myContribution: 0,
+                  emergencyApprovals: 0, // Reset approvals
+                }
+              : c
+          )
+        );
+
+        setEmergencyStatus(
+          `✅ Emergency withdraw approved! Withdrew ${withdrawAmount.toFixed(4)} ETH. Required ${requiredApprovals} approvals, got ${currentApprovals} (Demo Mode).`
+        );
+      } else {
+        // Need more approvals
+        setCircles((prev) =>
+          prev.map((c) =>
+            c.id === target.id
+              ? {
+                  ...c,
+                  emergencyApprovals: currentApprovals,
+                }
+              : c
+          )
+        );
+
+        setEmergencyStatus(
+          `⏳ Emergency withdraw requested. Need ${requiredApprovals} approvals (80% of ${target.numPeople} participants). Current: ${currentApprovals}/${requiredApprovals} (Demo Mode).`
+        );
+      }
+
+      setIsRequestingEmergency(false);
+    }, 1000);
+  }
+
+  function handleApproveEmergency() {
+    const target = circles[0];
+    if (!target) {
+      return;
+    }
+
+    const requiredApprovals = Math.ceil(target.numPeople * 0.8);
+    const newApprovals = target.emergencyApprovals + 1;
+
+    setCircles((prev) =>
+      prev.map((c) =>
+        c.id === target.id
+          ? {
+              ...c,
+              emergencyApprovals: newApprovals,
+            }
+          : c
+      )
+    );
+
+    if (newApprovals >= requiredApprovals) {
+      setEmergencyStatus(
+        `✅ Emergency withdraw approved! ${newApprovals}/${requiredApprovals} approvals reached. The requester can now withdraw (Demo Mode).`
+      );
+    } else {
+      setEmergencyStatus(
+        `✅ Approval recorded. ${newApprovals}/${requiredApprovals} approvals (Demo Mode).`
+      );
+    }
+
+    setHasApprovedEmergency(true);
   }
 
   const firstCircle = circles[0] ?? null;
@@ -530,8 +692,14 @@ export default function Home() {
                 ? "✅ verified for this device"
                 : "Not verified yet"}
             </div>
-            <div>Total circle pot: {firstCircle.pot} ETH</div>
-            <div>Your contribution: {firstCircle.myContribution} ETH</div>
+            <div>Total circle pot: {firstCircle.pot.toFixed(4)} ETH</div>
+            <div>Your contribution: {firstCircle.myContribution.toFixed(4)} ETH</div>
+            {firstCircle.totalYield > 0 && (
+              <div style={{ marginTop: "4px", padding: "6px", backgroundColor: "#e7f3ff", borderRadius: "4px" }}>
+                <div>Total yield in circle: {firstCircle.totalYield.toFixed(4)} ETH</div>
+                <div>Your yield earned: {firstCircle.yieldEarned.toFixed(4)} ETH</div>
+              </div>
+            )}
             {firstCircle.currentRecipient && (
               <div style={{ 
                 padding: "8px", 
@@ -599,11 +767,14 @@ export default function Home() {
               <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
                 Withdraw Your Contribution
               </h3>
+              <div style={{ fontSize: "12px", color: "#dc2626", marginBottom: "8px", padding: "6px", backgroundColor: "#fee", borderRadius: "4px" }}>
+                ⚠️ Withdrawal fee: 5% (to disincentivize leaving the circle)
+              </div>
               <label style={{ fontSize: "14px" }}>
                 Withdraw amount
                 <input
                   type="number"
-                  placeholder={`Max: ${firstCircle.myContribution}`}
+                  placeholder={`Max: ${firstCircle.myContribution.toFixed(4)}`}
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   style={{
@@ -615,6 +786,11 @@ export default function Home() {
                   }}
                 />
               </label>
+              {withdrawAmount && Number(withdrawAmount) > 0 && (
+                <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
+                  You'll receive: {(Number(withdrawAmount) * 0.95).toFixed(4)} ETH (after 5% fee)
+                </div>
+              )}
               <button
                 onClick={handleWithdraw}
                 disabled={isWithdrawing}
@@ -631,7 +807,7 @@ export default function Home() {
                   width: "100%",
                 }}
               >
-                {isWithdrawing ? "Processing..." : "Withdraw"}
+                {isWithdrawing ? "Processing..." : "Withdraw (5% fee)"}
               </button>
               {withdrawStatus && (
                 <p style={{ marginTop: "6px", fontSize: "14px", color: "#374151" }}>
@@ -648,9 +824,14 @@ export default function Home() {
                 🎉 Claim the Pot!
               </h3>
               <div style={{ fontSize: "14px", marginBottom: "12px", padding: "8px", backgroundColor: "#d4edda", borderRadius: "6px" }}>
-                <div>Total Pot: {firstCircle.pot} ETH</div>
-                <div>Your Deposit: {firstCircle.myContribution} ETH (stays in)</div>
-                <div><strong>You will receive: {firstCircle.pot - firstCircle.myContribution} ETH</strong></div>
+                <div>Total Pot: {firstCircle.pot.toFixed(4)} ETH</div>
+                <div>Your Deposit: {firstCircle.myContribution.toFixed(4)} ETH</div>
+                <div style={{ marginTop: "6px", padding: "6px", backgroundColor: "#fff", borderRadius: "4px", border: "2px solid #047857" }}>
+                  <div><strong>You will receive: {(firstCircle.pot - firstCircle.myContribution).toFixed(4)} ETH</strong></div>
+                  <div style={{ fontSize: "12px", color: "#047857", marginTop: "4px" }}>
+                    ⚠️ Your deposit of {firstCircle.myContribution.toFixed(4)} ETH will be REDEPOSITED into the circle to ensure you don't run away
+                  </div>
+                </div>
               </div>
               <button
                 onClick={handleClaimPot}
@@ -672,6 +853,100 @@ export default function Home() {
               {claimStatus && (
                 <p style={{ marginTop: "6px", fontSize: "14px", color: "#374151" }}>
                   {claimStatus}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Yield Claim section */}
+          {firstCircle.yieldEarned > 0 && (
+            <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #ddd" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
+                💰 Claim Your Yield
+              </h3>
+              <div style={{ fontSize: "14px", marginBottom: "12px", padding: "8px", backgroundColor: "#e7f3ff", borderRadius: "6px" }}>
+                <div>Your yield earned: <strong>{firstCircle.yieldEarned.toFixed(4)} ETH</strong></div>
+                <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
+                  This is from the 10% yield strategy portion of all deposits
+                </div>
+              </div>
+              <button
+                onClick={handleClaimYield}
+                disabled={isClaimingYield}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: "999px",
+                  border: "none",
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  cursor: isClaimingYield ? "wait" : "pointer",
+                  backgroundColor: "#2196F3",
+                  color: "white",
+                  width: "100%",
+                }}
+              >
+                {isClaimingYield ? "Processing..." : "Claim Yield"}
+              </button>
+              {yieldStatus && (
+                <p style={{ marginTop: "6px", fontSize: "14px", color: "#374151" }}>
+                  {yieldStatus}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Emergency Withdraw section */}
+          {firstCircle.myContribution > 0 && (
+            <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #ddd" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
+                🚨 Emergency Withdraw
+              </h3>
+              <div style={{ fontSize: "12px", marginBottom: "12px", padding: "8px", backgroundColor: "#fff3cd", borderRadius: "6px" }}>
+                <div><strong>Requires 80% approval:</strong> {Math.ceil(firstCircle.numPeople * 0.8)} out of {firstCircle.numPeople} participants must approve</div>
+                <div style={{ marginTop: "4px" }}>
+                  Current approvals: {firstCircle.emergencyApprovals}/{Math.ceil(firstCircle.numPeople * 0.8)}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={handleEmergencyWithdraw}
+                  disabled={isRequestingEmergency}
+                  style={{
+                    flex: 1,
+                    padding: "10px 16px",
+                    borderRadius: "999px",
+                    border: "none",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: isRequestingEmergency ? "wait" : "pointer",
+                    backgroundColor: "#ff9800",
+                    color: "white",
+                  }}
+                >
+                  {isRequestingEmergency ? "Processing..." : "Request Emergency Withdraw"}
+                </button>
+                {firstCircle.emergencyApprovals > 0 && !hasApprovedEmergency && (
+                  <button
+                    onClick={handleApproveEmergency}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: "999px",
+                      border: "none",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      backgroundColor: "#4CAF50",
+                      color: "white",
+                    }}
+                  >
+                    Approve
+                  </button>
+                )}
+              </div>
+              {emergencyStatus && (
+                <p style={{ marginTop: "6px", fontSize: "14px", color: "#374151" }}>
+                  {emergencyStatus}
                 </p>
               )}
             </div>
