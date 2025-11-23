@@ -164,10 +164,10 @@ export default function Home() {
         );
         
         const errorCode = result.finalPayload.error_code;
-        const errorDetail = result.finalPayload.description || "";
+        const errorDetail = (result.finalPayload as any).description || errorCode || "";
         
         setVerifyStatus(
-          `Verification failed: ${errorCode || errorDetail || "Unknown error"}`
+          `Verification failed: ${errorDetail || "Unknown error"}`
         );
       }
     } catch (error) {
