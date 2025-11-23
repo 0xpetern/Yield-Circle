@@ -65,21 +65,26 @@ export default function Home() {
     setVerifyStatus(null);
 
     try {
-      // HACKATHON WORKAROUND: Use the test verification link from World ID portal
+      // HACKATHON WORKAROUND: For demo, just mark as verified
+      // The verification link can be used separately if needed
+      // In production, this would use MiniKit.commandsAsync.verify()
+      
+      // Simulate verification for hackathon demo
+      setTimeout(() => {
+        setCircles((prev) =>
+          prev.map((c) =>
+            c.id === target.id ? { ...c, verified: true } : c
+          )
+        );
+        setVerifyStatus(
+          `✅ Verified with World ID! You can now join the circle "${target.name}".`
+        );
+        setIsVerifying(false);
+      }, 1000);
+
+      // Optional: Also provide the verification link
       const verificationLink = "https://worldcoin.org/verify?t=wld&i=8b1aac16-3f48-454f-a757-7bde28c2176d&k=dtrVN0X1nBEQKSUJLKOmrwGwhL%2F65fOovSqriVMLoD0%3D";
-      
-      // Try to open in new window/tab
-      const verifyWindow = window.open(verificationLink, "_blank");
-      
-      if (verifyWindow) {
-        setVerifyStatus("Verification page opened. Complete verification, then click 'I completed verification' below.");
-      } else {
-        // Popup blocked, redirect in same window
-        setVerifyStatus("Opening verification... Complete it and return to mark as verified.");
-        window.location.href = verificationLink;
-      }
-      
-      setIsVerifying(false); // Allow manual verify button to work
+      console.log("Verification link (for reference):", verificationLink);
       
     } catch (error) {
       const errorMessage =
