@@ -76,21 +76,35 @@ export async function depositToCircleOnWorldChain(
       ],
     });
 
-    console.log("Transaction result:", result.finalPayload);
+    console.log("Transaction result:", JSON.stringify(result.finalPayload, null, 2));
 
     // Check if transaction was successful
     if (result.finalPayload.status !== "success") {
       const errorCode = result.finalPayload.error_code;
       const errorCodeStr = errorCode?.toString() || "";
+      const errorDetail = (result.finalPayload as any).error?.message || (result.finalPayload as any).description || "";
       
-      // Handle user rejection (check if error code indicates rejection)
+      console.error("Transaction failed:", {
+        errorCode,
+        errorDetail,
+        fullPayload: result.finalPayload,
+      });
+      
+      // Handle user rejection
       if (errorCodeStr.toLowerCase().includes("reject") || errorCodeStr.toLowerCase().includes("user")) {
         throw new Error("Transaction rejected by user");
       }
       
+      // Handle simulation failure
+      if (errorCodeStr.toLowerCase().includes("simulation") || errorDetail.toLowerCase().includes("simulation")) {
+        throw new Error(
+          `Transaction simulation failed. Make sure the contract address ${YIELD_CIRCLE_VAULT_ADDRESS} is added to your World ID Developer Portal under Configuration > Advanced > Contract Entrypoints.`
+        );
+      }
+      
       throw new Error(
-        errorCodeStr
-          ? `Transaction failed with error code: ${errorCodeStr}`
+        errorDetail || errorCodeStr
+          ? `Transaction failed: ${errorDetail || errorCodeStr}`
           : "Transaction failed. Please try again."
       );
     }
