@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
-import { depositToCircleOnWorldChain, withdrawFromCircle, claimPot } from "../lib/worldPayment";
 import { WalletSwitcher } from "../components/WalletSwitcher";
 
 type Circle = {
@@ -384,7 +383,7 @@ export default function Home() {
       );
 
       setClaimStatus(
-        `✅ Claimed ${claimAmount.toFixed(4)} ETH! Your deposit of ${redepositedAmount.toFixed(4)} ETH has been REDEPOSITED into the circle to ensure you don't run away (Demo Mode).`
+        `✅ Claimed ${claimAmount.toFixed(4)} ETH! Your deposit of ${redepositedAmount.toFixed(4)} ETH has been REDEPOSITED into the circle to ensure you do not run away (Demo Mode).`
       );
       setIsClaiming(false);
     }, 1000);
@@ -788,7 +787,7 @@ export default function Home() {
               </label>
               {withdrawAmount && Number(withdrawAmount) > 0 && (
                 <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
-                  You'll receive: {(Number(withdrawAmount) * 0.95).toFixed(4)} ETH (after 5% fee)
+                  You will receive: {(Number(withdrawAmount) * 0.95).toFixed(4)} ETH (after 5% fee)
                 </div>
               )}
               <button
@@ -829,7 +828,7 @@ export default function Home() {
                 <div style={{ marginTop: "6px", padding: "6px", backgroundColor: "#fff", borderRadius: "4px", border: "2px solid #047857" }}>
                   <div><strong>You will receive: {(firstCircle.pot - firstCircle.myContribution).toFixed(4)} ETH</strong></div>
                   <div style={{ fontSize: "12px", color: "#047857", marginTop: "4px" }}>
-                    ⚠️ Your deposit of {firstCircle.myContribution.toFixed(4)} ETH will be REDEPOSITED into the circle to ensure you don't run away
+                    ⚠️ Your deposit of {firstCircle.myContribution.toFixed(4)} ETH will be REDEPOSITED into the circle to ensure you do not run away
                   </div>
                 </div>
               </div>
