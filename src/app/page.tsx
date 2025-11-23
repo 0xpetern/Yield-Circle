@@ -460,8 +460,8 @@ export default function Home() {
     }
 
     // Can only leave when circle resets (after a round completes)
-    if (target.roundNumber <= 1 && !target.isRecipient) {
-      setLeaveStatus("You can only leave the circle after a round completes.");
+    if (target.roundNumber <= 1) {
+      setLeaveStatus("You can only leave the circle after a round completes and the circle resets.");
       return;
     }
 
@@ -918,8 +918,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* Leave Circle Section */}
-            {firstCircle.myContribution > 0 && firstCircle.roundNumber > 1 && !firstCircle.isRecipient && (
+            {/* Leave Circle Section - Available after circle resets */}
+            {firstCircle.myContribution > 0 && firstCircle.roundNumber > 1 && (
               <div style={{ marginBottom: "24px", paddingBottom: "24px", borderBottom: "1px solid #e2e8f0" }}>
                 <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px", color: "#1a202c" }}>
                   Leave Circle
@@ -936,7 +936,7 @@ export default function Home() {
                   Withdrawal fee: 5% (applies when leaving after circle reset)
                 </div>
                 <div style={{ fontSize: "14px", color: "#718096", marginBottom: "16px" }}>
-                  You can leave the circle now that a round has completed. You will receive your contribution minus the 5% fee.
+                  The circle has reset after round {firstCircle.roundNumber - 1}. You can now leave the circle and receive your contribution minus the 5% fee.
                 </div>
                 <button
                   onClick={handleLeaveCircle}
