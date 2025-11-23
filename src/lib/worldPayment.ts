@@ -56,7 +56,7 @@ export async function depositToCircleOnWorldChain(
     const valueHex = "0x" + amountInWei.toString(16);
     
     // Ensure value is not "0x0" (which would be invalid)
-    if (valueHex === "0x0" || amountInWei === 0n) {
+    if (valueHex === "0x0" || amountInWei === BigInt(0)) {
       throw new Error("Deposit amount is too small. Minimum is 1 wei.");
     }
 
@@ -89,7 +89,9 @@ export async function depositToCircleOnWorldChain(
     if (result.finalPayload.status !== "success") {
       const errorCode = result.finalPayload.error_code;
       const errorCodeStr = errorCode?.toString() || "";
-      const errorDetail = (result.finalPayload as any).error?.message || (result.finalPayload as any).description || "";
+      // Get error details from the payload (avoiding any type)
+      const payload = result.finalPayload as { description?: string; error?: { message?: string } };
+      const errorDetail = payload.error?.message || payload.description || "";
       
       console.error("Transaction failed:", {
         errorCode,
