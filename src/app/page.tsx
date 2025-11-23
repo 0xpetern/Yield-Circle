@@ -648,7 +648,7 @@ export default function Home() {
               <div style={{ fontSize: "14px", marginBottom: "12px", padding: "8px", backgroundColor: "#d4edda", borderRadius: "6px" }}>
                 <div>Total Pot: {firstCircle.pot} ETH</div>
                 <div>Your Deposit: {firstCircle.myContribution} ETH (stays in)</div>
-                <div><strong>You'll receive: {firstCircle.pot - firstCircle.myContribution} ETH</strong></div>
+                <div><strong>You will receive: {firstCircle.pot - firstCircle.myContribution} ETH</strong></div>
               </div>
               <button
                 onClick={handleClaimPot}

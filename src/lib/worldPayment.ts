@@ -16,13 +16,6 @@ function ethToWei(ethAmount: number): bigint {
 }
 
 /**
- * Converts wei to ETH
- */
-function weiToEth(wei: bigint): number {
-  return Number(wei) / 1e18;
-}
-
-/**
  * Deposits native ETH to a circle in the YieldCircleVault contract
  * 
  * @param amount - The amount to deposit in ETH units (e.g., 0.1 for 0.1 ETH)
@@ -139,7 +132,6 @@ export async function withdrawFromCircle(
 
   try {
     const amountInWei = ethToWei(amount);
-    const amountHex = "0x" + amountInWei.toString(16);
 
     console.log("Initiating withdraw transaction:", {
       circleId,
