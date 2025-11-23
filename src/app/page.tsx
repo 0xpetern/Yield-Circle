@@ -48,6 +48,9 @@ export default function Home() {
   
   const [leaveStatus, setLeaveStatus] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  
+  const [joinStatus, setJoinStatus] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
 
   function handleCreateCircle() {
     if (!circleName.trim() || !numPeople.trim()) {
@@ -459,11 +462,7 @@ export default function Home() {
       return;
     }
 
-    // Can only leave when circle resets (after a round completes)
-    if (target.roundNumber <= 1) {
-      setLeaveStatus("You can only leave the circle after a round completes and the circle resets.");
-      return;
-    }
+    // For demo purposes, allow leaving anytime (removed roundNumber restriction)
 
     setIsLeaving(true);
     setLeaveStatus("Processing leave request...");
@@ -554,7 +553,7 @@ export default function Home() {
             Circle Name
           <input
             type="text"
-              placeholder="e.g. Rent Savings Circle"
+              placeholder="e.g. Traders Savings Circle"
             value={circleName}
             onChange={(e) => setCircleName(e.target.value)}
             style={{
@@ -918,8 +917,42 @@ export default function Home() {
               </div>
             )}
 
-            {/* Leave Circle Section - Available after circle resets */}
-            {firstCircle.myContribution > 0 && firstCircle.roundNumber > 1 && (
+            {/* Join Circle Section - For switching wallets */}
+            {firstCircle.verified && firstCircle.myContribution === 0 && (
+              <div style={{ marginBottom: "24px", paddingBottom: "24px", borderBottom: "1px solid #e2e8f0" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px", color: "#1a202c" }}>
+                  Join Circle
+                </h3>
+                <div style={{ fontSize: "14px", color: "#718096", marginBottom: "16px" }}>
+                  Join this circle with your current wallet to start depositing.
+                </div>
+                <button
+                  onClick={handleJoinCircle}
+                  disabled={isJoining}
+                  style={{
+                    width: "100%",
+                    padding: "14px 24px",
+                    borderRadius: "8px",
+                    border: "none",
+                    fontSize: "16px",
+                    fontWeight: 600,
+                    cursor: isJoining ? "wait" : "pointer",
+                    background: isJoining ? "#cbd5e0" : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    color: "white",
+                  }}
+                >
+                  {isJoining ? "Processing..." : "Join Circle"}
+                </button>
+                {joinStatus && (
+                  <p style={{ marginTop: "12px", fontSize: "14px", color: "#38a169" }}>
+                    {joinStatus}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Leave Circle Section - Available anytime for demo */}
+            {firstCircle.myContribution > 0 && (
               <div style={{ marginBottom: "24px", paddingBottom: "24px", borderBottom: "1px solid #e2e8f0" }}>
                 <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px", color: "#1a202c" }}>
                   Leave Circle
@@ -936,7 +969,7 @@ export default function Home() {
                   Withdrawal fee: 5% (applies when leaving after circle reset)
                 </div>
                 <div style={{ fontSize: "14px", color: "#718096", marginBottom: "16px" }}>
-                  The circle has reset after round {firstCircle.roundNumber - 1}. You can now leave the circle and receive your contribution minus the 5% fee.
+                  Leave the circle and receive your contribution minus the 5% withdrawal fee.
                 </div>
                 <button
                   onClick={handleLeaveCircle}
