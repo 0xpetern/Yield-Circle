@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { MiniKit } from "@worldcoin/minikit-js";
+import { depositToCircleOnWorldChain } from "../lib/worldPayment";
 
 type Circle = {
   id: number;
   name: string;
   numPeople: number;
   verified: boolean;
-  pot: number; // total simulated balance in this circle
-  myContribution: number; // how much this user/device has deposited
+  pot: number; // total balance in this circle (local tracking)
+  myContribution: number; // how much this user/device has deposited (local tracking)
 };
 
 export default function Home() {
@@ -71,32 +72,60 @@ export default function Home() {
         return;
       }
 
-      // Call World ID via MiniKit
-      await MiniKit.commands.verify({
+      // Call World ID via MiniKit (using async version to get result)
+      const result = await MiniKit.commandsAsync.verify({
         action: "yield-circle-join", // must match your action ID in the portal
         signal: target.name, // any string to bind the proof to
       });
 
-      // If verify() didn't throw, treat it as success for the hackathon
-      setVerifyStatus(
-        `✅ Verified with World ID! You can now join the circle "${target.name}".`
-      );
+      // Log the full result for debugging
+      console.log("Verify result:", result.finalPayload);
 
+      // Check if verification was actually successful
+      if (result.finalPayload.status === "success") {
+        setVerifyStatus(
+          `✅ Verified with World ID! You can now join the circle "${target.name}".`
+        );
+
+        setCircles((prev) =>
+          prev.map((c) =>
+            c.id === target.id ? { ...c, verified: true } : c
+          )
+        );
+      } else {
+        // Verification failed - show error from MiniKit
+        // Explicitly ensure circle is NOT marked as verified
+        setCircles((prev) =>
+          prev.map((c) =>
+            c.id === target.id ? { ...c, verified: false } : c
+          )
+        );
+        
+        const errorCode = result.finalPayload.error_code;
+        const errorMessage = errorCode
+          ? `Error code: ${errorCode}. Make sure the action "yield-circle-join" exists in your World ID developer portal.`
+          : "Verification failed. Please check that the action 'yield-circle-join' is configured in your World ID developer portal.";
+        setVerifyStatus(`Verification error: ${errorMessage}`);
+      }
+    } catch (error) {
+      // Handle unexpected errors - ensure circle is NOT marked as verified
       setCircles((prev) =>
         prev.map((c) =>
-          c.id === target.id ? { ...c, verified: true } : c
+          c.id === target.id ? { ...c, verified: false } : c
         )
       );
-    } catch {
-      setVerifyStatus(
-        "Verification error. Please try again in World App."
-      );
+      
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Verification error. Please try again in World App.";
+      setVerifyStatus(errorMessage);
     } finally {
       setIsVerifying(false);
     }
   }
 
-  function handleDepositForFirstCircle() {
+  async function handleDepositForFirstCircle() {
     if (circles.length === 0) {
       alert("Create a circle first, then deposit.");
       return;
@@ -123,10 +152,18 @@ export default function Home() {
     setIsDepositing(true);
 
     try {
-      // 🔮 For now, this is just a local simulation.
-      // Later, we’ll replace this with a real World Chain transaction
-      // (MiniKit.commands.sendTransaction or pay).
+      // Check if MiniKit is installed before attempting payment
+      if (!MiniKit.isInstalled()) {
+        setDepositStatus(
+          "Please open this mini app inside World App to deposit."
+        );
+        return;
+      }
 
+      // Call the World Chain payment helper
+      await depositToCircleOnWorldChain(amount, target.name);
+
+      // If payment succeeds, update local state
       setCircles((prev) =>
         prev.map((c) =>
           c.id === target.id
@@ -140,9 +177,16 @@ export default function Home() {
       );
 
       setDepositStatus(
-        `✅ Deposited ${amount} into "${target.name}" (simulated).`
+        `✅ On-chain deposit successful. Deposited ${amount} into circle "${target.name}".`
       );
       setDepositAmount("");
+    } catch (error) {
+      // Handle errors from the deposit helper
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Unknown World Chain error";
+      setDepositStatus(`Deposit failed: ${errorMessage}`);
     } finally {
       setIsDepositing(false);
     }
@@ -299,8 +343,8 @@ export default function Home() {
                 ? "✅ verified for this device"
                 : "Not verified yet"}
             </div>
-            <div>Total circle pot (simulated): {firstCircle.pot}</div>
-            <div>Your contribution (simulated): {firstCircle.myContribution}</div>
+            <div>Total circle pot: {firstCircle.pot}</div>
+            <div>Your contribution: {firstCircle.myContribution}</div>
           </div>
 
           <label style={{ fontSize: "14px" }}>
@@ -397,8 +441,8 @@ export default function Home() {
                     ? "✅ verified for this device"
                     : "Not verified yet"}
                 </div>
-                <div>Total pot (simulated): {circle.pot}</div>
-                <div>Your contribution (simulated): {circle.myContribution}</div>
+                <div>Total pot: {circle.pot}</div>
+                <div>Your contribution: {circle.myContribution}</div>
               </div>
             ))}
           </>

@@ -1,4 +1,5 @@
 {
+  "exclude": ["scripts", "contracts", "test", "hardhat.config.cjs"],
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -23,5 +24,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "scripts", "contracts", "test", "hardhat.config.cjs", "artifacts", "cache"]
 }

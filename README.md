@@ -28,6 +28,45 @@ This starter kit uses [Mini Apps UI Kit](https://github.com/worldcoin/mini-apps-
 
 [Eruda](https://github.com/liriliri/eruda) is a tool that allows you to inspect the console while building as a mini app. You should disable this in production.
 
+## Deploying YieldCircleVault Contract
+
+To deploy the YieldCircleVault smart contract to World Chain:
+
+1. **Install dependencies** (if not already installed):
+   ```bash
+   npm install
+   ```
+
+2. **Set up environment variables** in your `.env.local` file:
+   ```env
+   WORLD_RPC_URL=https://worldchain-mainnet.g.alchemy.com/public/YOUR_API_KEY
+   WORLD_CHAIN_ID=480
+   PRIVATE_KEY=your_private_key_here
+   ```
+   - Get a World Chain RPC URL from [Alchemy](https://www.alchemy.com/) or another provider
+   - World Chain mainnet chain ID is `480`
+   - Use a private key from a wallet that has funds for gas
+
+3. **Compile the contract**:
+   ```bash
+   npm run compile
+   ```
+
+4. **Deploy the contract**:
+   ```bash
+   npm run deploy:vault
+   ```
+
+5. **Copy the deployed address** from the console output and paste it into `src/lib/worldPayment.ts`:
+   ```typescript
+   const YIELD_CIRCLE_VAULT_ADDRESS = "0x..."; // Paste your deployed address here
+   ```
+
+6. **Add the contract address to your World ID Developer Portal**:
+   - Go to your app's configuration in the [World ID Developer Portal](https://developer.worldcoin.org)
+   - Navigate to "Configuration" > "Advanced"
+   - Add the contract address to "Contract Entrypoints"
+
 ## Contributing
 
 This template was made with help from the amazing [supercorp-ai](https://github.com/supercorp-ai) team.
