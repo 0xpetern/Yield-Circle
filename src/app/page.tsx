@@ -450,6 +450,29 @@ export default function Home() {
     setHasApprovedEmergency(true);
   }
 
+  async function handleJoinCircle() {
+    const target = circles[0];
+    if (!target) {
+      setJoinStatus("No circle found.");
+      return;
+    }
+
+    if (!target.verified) {
+      setJoinStatus("Please verify with World ID first before joining the circle.");
+      return;
+    }
+
+    setIsJoining(true);
+    setJoinStatus("Joining circle...");
+
+    // For demo: When joining with a different wallet, allow depositing to existing circle
+    // This simulates multiple users joining the same circle
+    setTimeout(() => {
+      setJoinStatus("Successfully joined the circle! You can now deposit.");
+      setIsJoining(false);
+    }, 1000);
+  }
+
   async function handleLeaveCircle() {
     const target = circles[0];
     if (!target) {
