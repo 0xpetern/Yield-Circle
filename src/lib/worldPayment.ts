@@ -51,11 +51,14 @@ export async function depositToCircleOnWorldChain(
   try {
     // Convert ETH amount to wei
     const amountInWei = ethToWei(amount);
+    // Convert to hex string (required format for MiniKit)
+    const valueHex = "0x" + amountInWei.toString(16);
 
     console.log("Initiating deposit transaction:", {
       to: YIELD_CIRCLE_VAULT_ADDRESS,
       amount: amount,
       amountInWei: amountInWei.toString(),
+      valueHex: valueHex,
       circleName,
     });
 
@@ -68,7 +71,7 @@ export async function depositToCircleOnWorldChain(
           abi: YieldCircleVaultABI,
           functionName: "deposit",
           args: [],
-          value: amountInWei.toString(), // Send native ETH with the transaction
+          value: valueHex, // Send native ETH with the transaction (must be hex string)
         },
       ],
     });
