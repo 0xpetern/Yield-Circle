@@ -107,7 +107,7 @@ export async function depositToCircleOnWorldChain(
       // Handle simulation failure
       if (errorCodeStr.toLowerCase().includes("simulation") || errorDetail.toLowerCase().includes("simulation")) {
         throw new Error(
-          `Transaction simulation failed. Make sure the contract address ${YIELD_CIRCLE_VAULT_ADDRESS} is added to your World ID Developer Portal under Configuration > Advanced > Contract Entrypoints.`
+          `Transaction simulation failed. Please add this EXACT address to World ID Developer Portal:\n\n${YIELD_CIRCLE_VAULT_ADDRESS}\n\nSteps:\n1. Go to developer.worldcoin.org\n2. Your app > Configuration > Advanced\n3. Add to "Contract Entrypoints"\n4. Wait 1-2 minutes, then try again.`
         );
       }
       
