@@ -52,7 +52,13 @@ export async function depositToCircleOnWorldChain(
     // Convert ETH amount to wei
     const amountInWei = ethToWei(amount);
     // Convert to hex string (required format for MiniKit)
+    // Ensure it's a proper hex string (no padding needed for BigInt.toString(16))
     const valueHex = "0x" + amountInWei.toString(16);
+    
+    // Ensure value is not "0x0" (which would be invalid)
+    if (valueHex === "0x0" || amountInWei === 0n) {
+      throw new Error("Deposit amount is too small. Minimum is 1 wei.");
+    }
 
     console.log("Initiating deposit transaction:", {
       to: YIELD_CIRCLE_VAULT_ADDRESS,
@@ -64,6 +70,7 @@ export async function depositToCircleOnWorldChain(
 
     // Call the deposit() function on YieldCircleVault contract
     // This will show a popup in World App for user confirmation
+    // Note: Make sure the contract address is added to World ID Developer Portal > Configuration > Advanced > Contract Entrypoints
     const result = await MiniKit.commandsAsync.sendTransaction({
       transaction: [
         {
@@ -71,7 +78,7 @@ export async function depositToCircleOnWorldChain(
           abi: YieldCircleVaultABI,
           functionName: "deposit",
           args: [],
-          value: valueHex, // Send native ETH with the transaction (must be hex string)
+          value: valueHex, // Send native ETH with the transaction (must be hex string like "0x...")
         },
       ],
     });
